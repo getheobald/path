@@ -1,5 +1,3 @@
-# CS 4100 Artificial Intelligence
+# Path
 
-2/16 meeting:
-* Talk about roadmap
-* Talk about tasks to complete by Thurs
+Project for CS4100 Artificial Intelligence
