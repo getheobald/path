@@ -23,7 +23,7 @@ cd backend
 python app.py
 ```
 
-First run will download Burlington network, which may take around 30 seconds
+First run will download Burlington network, which may take a little bit because there are over 50,000 nodes!
 
 ### 3. Run Frontend
 
@@ -38,7 +38,7 @@ Open http://localhost:8000
 ## How to Use
 
 1. Click on map to set starting point
-2. Enter desired distance (km)
+2. Enter desired distance (in km)
 3. Select elevation preference
 4. Click "Generate Route"
 5. Route appears on map!
