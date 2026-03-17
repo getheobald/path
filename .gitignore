@@ -9,6 +9,11 @@ env/
 ENV/
 .venv
 
+# Data files
+*.graphml
+*.geojson
+*.tif
+
 # IDEs
 .vscode/
 .idea/
@@ -21,3 +26,6 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+# Cache
+cache/
