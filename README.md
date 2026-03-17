@@ -23,7 +23,7 @@ cd backend
 python app.py
 ```
 
-First run will download Burlington network, which may take a little bit because there are over 50,000 nodes!
+First run will download Boston network, which may take a little bit because there are over 50,000 nodes!
 
 ### 3. Run Frontend
 
