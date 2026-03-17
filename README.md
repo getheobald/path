@@ -1,6 +1,7 @@
-# PATH - AI Route Generator
+# Path
 
-Generate optimal running and cycling routes using local search algorithms.
+A web app that generates optimal running and cycling routes using local search algorithms!
+Project for CS 4100 Foundations of Artificial Intelligence
 
 ## Quick Start
 
