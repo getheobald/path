@@ -12,9 +12,9 @@ DEBUG = True
 PORT = 5000
 
 # Network data
-NETWORK_FILE = BASE_DIR / 'burlington_network.graphml'
+NETWORK_FILE = BASE_DIR / 'boston_network.graphml'
 CITY = 'Boston, Massachusetts, USA'
-NETWORK_TYPE = 'walk' # maybe change this to bike?
+NETWORK_TYPE = 'bike' # maybe change this to bike? - did that but could change back to walk
 
 # Algorithm parameters
 SA_MAX_ITERATIONS = 500
