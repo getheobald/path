@@ -1,5 +1,8 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Get the backend directory
 BASE_DIR = Path(__file__).resolve().parent
@@ -17,7 +20,7 @@ CITY = 'Boston, Massachusetts, USA'
 NETWORK_TYPE = 'bike' # maybe change this to bike? - did that but could change back to walk
 
 # Algorithm parameters
-SA_MAX_ITERATIONS = 500
+SA_MAX_ITERATIONS = 750
 SA_TEMPERATURE_INITIAL = 100.0
 SA_COOLING_RATE = 0.95
 SA_NUM_WAYPOINTS = 5

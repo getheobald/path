@@ -46,10 +46,10 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
     distance_error = abs(actual_distance_km - target_distance_km)
     
     # heavy penalty for distance errors
-    # i.e. if we want 5km and get 3km, that's 2km error = -400 points
-    distance_score = 1000 - (distance_error * 200)
+    # i.e. if we want 5km and get 3km, that's 2km error = -1000 points
+    distance_score = 1000 - (distance_error * 500)
     
-    # 2. ELEVATION SCORE
+    # ELEVATION SCORE
     elevation_score = 0
     if 'elevation' in G.nodes[full_route[0]]:
         elevation_gain = calculate_elevation_gain(G, full_route)
@@ -80,8 +80,10 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
                 elevation_score = -100
             else:
                 elevation_score = min(elevation_gain * 0.4, 300)  # cap at 300 points
+
+    backtracking_penalty = calculate_backtracking(full_route)
     
-    # 3. LOOP QUALITY (bonus)
+    # LOOP QUALITY
     loop_score = 0
     # check if route ends near start
     start_node = full_route[0]
@@ -95,7 +97,7 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
         loop_score = 50
     
     # TOTAL SCORE
-    total_score = distance_score + elevation_score + loop_score
+    total_score = distance_score + elevation_score + loop_score - backtracking_penalty
     
     return total_score
 
@@ -141,3 +143,39 @@ def calculate_elevation_gain(G, route_nodes):
                 elevation_gain += elev_change
     
     return elevation_gain
+
+def calculate_backtracking(route_nodes):
+    """
+    Penalize routes that revisit nodes or use same edges multiple times.
+    """
+    # Count repeated nodes (excluding start/end which should repeat)
+    unique_nodes = set(route_nodes[1:-1])  # Exclude start and end
+    total_nodes = len(route_nodes[1:-1])
+    
+    if total_nodes == 0:
+        return 0
+    
+    # If we visit 100 nodes but only 80 are unique, we backtracked through 20
+    repeated_nodes = total_nodes - len(unique_nodes)
+    
+    # Penalize: each repeated node = -50 points
+    node_penalty = repeated_nodes * 20
+    
+    # Also check for repeated edges (going down same street twice)
+    edge_list = []
+    repeated_edges = 0
+    
+    for i in range(len(route_nodes) - 1):
+        edge = (min(route_nodes[i], route_nodes[i+1]), 
+                max(route_nodes[i], route_nodes[i+1]))  # Undirected edge
+        
+        if edge in edge_list:
+            repeated_edges += 1
+        edge_list.append(edge)
+    
+    # Each repeated edge = -100 points (more severe)
+    edge_penalty = repeated_edges * 40
+    
+    total_penalty = node_penalty + edge_penalty
+    
+    return total_penalty

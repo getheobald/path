@@ -145,3 +145,15 @@ button:disabled {
     font-size: 14px;
     line-height: 1.5;
 }
+
+.start-popup .leaflet-popup-content-wrapper {
+    border-radius: 6px;
+}
+
+.start-popup .leaflet-popup-content {
+    margin: 8px 12px;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: #2c3e50;
+}

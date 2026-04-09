@@ -14,7 +14,7 @@ print(f"\nStart node: {start_node}")
 
 # Test 1: 5km flat route
 print("\nTest 1: 5km flat route")
-waypoints = simulated_annealing(G, start_node, 5.0, 'flat', max_iterations=200)
+waypoints = simulated_annealing(G, start_node, 5.0, 'flat', max_iterations=500)
 full_route = build_full_route(G, waypoints)
 stats = calculate_route_stats(G, full_route)
 print(f"Distance: {stats['distance_km']:.2f} km (target: 5.0)")
@@ -23,7 +23,7 @@ print(f"Result: {'good!' if abs(stats['distance_km'] - 5.0) < 0.75 else 'failed 
 
 # Test 2: 10km hilly route
 print("\nTest 2: 10km hilly route")
-waypoints = simulated_annealing(G, start_node, 10.0, 'hilly', max_iterations=200)
+waypoints = simulated_annealing(G, start_node, 10.0, 'hilly', max_iterations=500)
 full_route = build_full_route(G, waypoints)
 stats = calculate_route_stats(G, full_route)
 print(f"Distance: {stats['distance_km']:.2f} km (target: 10.0)")

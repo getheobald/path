@@ -1,5 +1,8 @@
-// Initialize map centered on Burlington, MA
-const map = L.map('map').setView([42.5015, -71.2619], 13);
+// Initialize map centered on Boston
+// Last param controls zoom
+// N = higher lat, S = lower lat, E = lower lon, W = higher long
+// Latitutde is first, longitude is second
+const map = L.map('map').setView([42.3510, -71.0790], 13);
 
 // Add OpenStreetMap tiles
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -23,7 +26,10 @@ map.on('click', function(e) {
     
     // Add new marker
     startMarker = L.marker([lat, lng]).addTo(map)
-        .bindPopup('Starting Point')
+        .bindPopup('START', {
+            closeButton: false,
+            className: 'start-popup'
+        })
         .openPopup();
     
     // Store location
@@ -118,8 +124,8 @@ function displayRoute(data) {
     // Draw route
     routeLine = L.polyline(latlngs, {
         color: '#3498db',
-        weight: 4,
-        opacity: 0.7
+        weight: 6,
+        opacity: 0.8
     }).addTo(map);
     
     // Fit map to show entire route
