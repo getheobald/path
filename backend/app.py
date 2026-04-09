@@ -102,6 +102,33 @@ def generate_route():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/nearest-node', methods=['POST'])
+def nearest_node():
+    """
+    Find nearest valid road node to a clicked point.
+    Returns the actual lat/lng of the nearest road.
+    """
+    try:
+        data = request.json
+        lat = data['lat']
+        lng = data['lng']
+        
+        # Find nearest node in the network
+        nearest = ox.nearest_nodes(G, lng, lat)
+        
+        # Get that node's actual coordinates
+        node_lat = G.nodes[nearest]['y']
+        node_lng = G.nodes[nearest]['x']
+        
+        return jsonify({
+            'lat': node_lat,
+            'lng': node_lng,
+            'node_id': int(nearest)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': 'No nearby roads found'}), 404
+
 if __name__ == '__main__':
     print(f"Starting PATH API on port {config.PORT}...")
     app.run(debug=config.DEBUG, port=config.PORT, host='0.0.0.0')

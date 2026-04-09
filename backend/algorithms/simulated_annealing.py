@@ -26,8 +26,9 @@ def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat'
     best_route = current_route.copy()
     best_score = current_score
     
-    temp = 100.0
-    decay = 0.98
+    import config
+    temp = config.SA_INIT_TEMP
+    decay = config.SA_DECAY
     
     for iteration in range(max_iterations):
         # generate neighbor by mutating current route

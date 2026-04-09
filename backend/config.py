@@ -17,12 +17,12 @@ PORT = 5000
 # Network data
 NETWORK_FILE = BASE_DIR / 'boston_network.graphml'
 CITY = 'Boston, Massachusetts, USA'
-NETWORK_TYPE = 'bike' # maybe change this to bike? - did that but could change back to walk
+NETWORK_TYPE = 'walk' # maybe change this to bike? - did that but could change back to walk
 
 # Algorithm parameters
 SA_MAX_ITERATIONS = 750
-SA_TEMPERATURE_INITIAL = 100.0
-SA_COOLING_RATE = 0.95
+SA_INIT_TEMP = 100.0
+SA_DECAY = 0.99
 SA_NUM_WAYPOINTS = 5
 
 # Route constraints

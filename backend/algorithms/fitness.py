@@ -20,22 +20,26 @@ Tuning:
 
 def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='flat'):
     """
-    Calculate fitness score for a route.
+    Calculate fitness score for a route
     Higher score = better route.
-    
-    Strategy:
-    1. MUST match distance (hard constraint)
-    2. SHOULD match elevation preference (soft constraint)
+
+    Priorities:
+    1. Must match distance
+    2. Should match elevation preference
+    3. Penalize busy/unsafe roads
     3. Penalize backtracking/repeated edges
+    4. Loop quality
+
     """
     
     # build route through waypoints
     full_route = build_full_route(G, route_waypoints)
     
+    # invalid route which is obviously very bad
     if not full_route or len(full_route) < 2:
-        return -100000  # Invalid route - very bad!
+        return -100000
     
-    # DISTANCE SCORE (most important)
+    # DISTANCE SCORE
     total_distance = 0
     for i in range(len(full_route) - 1):
         u, v = full_route[i], full_route[i+1]
@@ -47,7 +51,7 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
     
     # heavy penalty for distance errors
     # i.e. if we want 5km and get 3km, that's 2km error = -1000 points
-    distance_score = 1000 - (distance_error * 500)
+    distance_score = 1000 - (distance_error * 1000)
     
     # ELEVATION SCORE
     elevation_score = 0
@@ -55,7 +59,7 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
         elevation_gain = calculate_elevation_gain(G, full_route)
         
         if elevation_pref == 'flat':
-            # penalize ANY elevation gain
+            # penalize any elevation gain
             # 100m gain = -50 points
             elevation_score = -(elevation_gain * 0.5)
             
@@ -70,7 +74,7 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
                 # good! closer to 250 is better
                 elevation_score = 200 - abs(elevation_gain - ideal_gain) * 0.5
             else:
-                # Too hilly
+                # too hilly
                 elevation_score = -(elevation_gain - 400) * 0.3
                 
         elif elevation_pref == 'very-hilly':
@@ -82,6 +86,9 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
                 elevation_score = min(elevation_gain * 0.4, 300)  # cap at 300 points
 
     backtracking_penalty = calculate_backtracking(full_route)
+
+    # weight_by_road_type already handles highways in pathfinding, but this is a small backup penalty
+    busyness_penalty = calculate_road_busyness_penalty(G, full_route)
     
     # LOOP QUALITY
     loop_score = 0
@@ -97,13 +104,14 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
         loop_score = 50
     
     # TOTAL SCORE
-    total_score = distance_score + elevation_score + loop_score - backtracking_penalty
+    total_score = distance_score + elevation_score + loop_score - backtracking_penalty - busyness_penalty
     
     return total_score
 
 def build_full_route(G, waypoints):
     """
     Build full route through waypoints using shortest paths.
+    Uses weight_by_road_type to avoid highways and busy roads.
     
     Returns:
         List of node IDs forming complete route
@@ -113,7 +121,7 @@ def build_full_route(G, waypoints):
     for i in range(len(waypoints) - 1):
         try:
             # Find shortest path between consecutive waypoints
-            segment = ox.shortest_path(G, waypoints[i], waypoints[i+1], weight='length')
+            segment = ox.shortest_path(G, waypoints[i], waypoints[i+1], weight=weight_by_road_type)
             
             if segment is None:
                 return None  # No path exists
@@ -179,3 +187,71 @@ def calculate_backtracking(route_nodes):
     total_penalty = node_penalty + edge_penalty
     
     return total_penalty
+
+def calculate_road_busyness_penalty(G, route_nodes):
+    """
+    Penalize routes that use busy/major roads.
+    Backup penalty in case highways slip through pathfinding.
+    """
+    penalty = 0
+    
+    for i in range(len(route_nodes) - 1):
+        u, v = route_nodes[i], route_nodes[i+1]
+        
+        if G.has_edge(u, v):
+            edge_data = G.edges[u, v, 0]
+            highway_type = edge_data.get('highway', 'unclassified')
+            
+            if isinstance(highway_type, list):
+                highway_type = highway_type[0]
+            
+            # Severe penalties for highways (backup to pathfinding filter)
+            if highway_type in ['motorway', 'motorway_link', 'trunk', 'trunk_link']:
+                penalty += 1000  # Should never happen, but just in case
+            elif highway_type in ['primary', 'primary_link']:
+                penalty += 200   # Major roads
+            elif highway_type in ['secondary', 'secondary_link']:
+                penalty += 100   # Busy roads
+            elif highway_type in ['tertiary', 'tertiary_link']:
+                penalty += 30
+            elif highway_type in ['residential', 'living_street']:
+                penalty += 0
+            elif highway_type in ['path', 'footway', 'cycleway', 'track', 'pedestrian']:
+                penalty -= 50    # Reward these paths!!!
+            elif highway_type in ['service', 'unclassified']:
+                penalty += 20
+    
+    return penalty
+
+def weight_by_road_type(u, v, d):
+    """
+    Custom weight function for pathfinding that avoids dangerous/busy roads.
+    
+    Makes highways extremely expensive so shortest_path avoids them.
+    Returns effective "cost" of using this edge.
+    
+    Args:
+        u, v: nodes (from OSMnx)
+        d: edge data dictionary
+        
+    Returns:
+        Weighted cost (higher = avoid this edge)
+    """
+    length = d[0].get('length', 1)
+    highway_type = d[0].get('highway', 'unclassified')
+    
+    # Handle if highway is a list (some edges have multiple types)
+    if isinstance(highway_type, list):
+        highway_type = highway_type[0]
+    
+    # Weight multipliers based on road type
+    if highway_type in ['motorway', 'motorway_link', 'trunk', 'trunk_link']:
+        return length * 10000  # Highways - effectively impossible
+    elif highway_type in ['primary', 'primary_link']:
+        return length * 50     # Major roads (Storrow Drive) - avoid
+    elif highway_type in ['secondary', 'secondary_link']:
+        return length * 5      # Busy roads - discourage
+    elif highway_type in ['tertiary', 'tertiary_link']:
+        return length * 2      # Moderate traffic
+    else:
+        return length          # Residential, paths, etc - normal cost
