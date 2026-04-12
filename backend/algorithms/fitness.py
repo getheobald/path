@@ -33,10 +33,10 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
 
     """
 
-    print(f"  Calculating fitness for {len(route_waypoints)} waypoints...")
+    #print(f"  Calculating fitness for {len(route_waypoints)} waypoints...")
     
     full_route = build_full_route(G, route_waypoints)
-    print(f"  Built route with {len(full_route) if full_route else 0} nodes")
+    #print(f"  Built route with {len(full_route) if full_route else 0} nodes")
     
     # invalid route which is obviously very bad
     if not full_route or len(full_route) < 2:

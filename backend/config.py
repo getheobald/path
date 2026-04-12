@@ -25,12 +25,17 @@ else:
     NETWORK_FILE = BASE_DIR / 'boston_bike_network.graphml'
     NETWORK_TYPE = 'bike'
 
+# If using city
 CITY = 'Boston, Massachusetts, USA'
+
+# If using center and radius
+CENTER_POINT = (42.3392, -71.0885) # centered on Cabot
+RADIUS = 4000
 
 # Algorithm parameters
 SA_MAX_ITERATIONS = 300
 SA_INIT_TEMP = 100.0
-SA_DECAY = 0.95
+SA_DECAY = 0.97
 SA_NUM_WAYPOINTS = 5
 
 # Route constraints

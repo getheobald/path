@@ -33,7 +33,7 @@ def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat'
     for iteration in range(max_iterations):
         # generate neighbor by mutating current route
         new_route = mutate_route(G, current_route)
-        new_score = calculate_fitness(G, new_route, target_distance_km, elevation_pref)
+        new_score = calculate_fitness(G, new_route, target_distance_km, elevation_pref, greenery_pref)
         
         # decide whether to accept
         if accept_move(current_score, new_score, temp):

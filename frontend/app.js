@@ -16,38 +16,62 @@ let startLocation = null;
 let routeLine = null;
 
 // Handle map clicks to set starting point
-map.on('click', function(e) {
+map.on('click', async function(e) {
     const { lat, lng } = e.latlng;
     
     // Remove previous marker if exists
     if (startMarker) {
         map.removeLayer(startMarker);
     }
-    
-    // Add new marker
-    startMarker = L.marker([lat, lng]).addTo(map)
-        .bindPopup('START', {
-            closeButton: false,
-            className: 'start-popup'
-        })
-        .openPopup();
-    
-    // Store location
-    startLocation = { lat, lng };
-    
-    // Update UI
-    document.getElementById('start-coords').textContent = 
-        `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-    document.getElementById('generate-btn').disabled = false;
-    
-    // Hide previous results
-    document.getElementById('result-info').style.display = 'none';
-    document.getElementById('error-message').style.display = 'none';
-    
-    // Remove previous route
-    if (routeLine) {
-        map.removeLayer(routeLine);
-        routeLine = null;
+
+    const tempMarker = L.marker([lat, lng], {opacity: 0.5}).addTo(map);
+
+    try {
+        // Ask backend to find nearest valid road node
+        const response = await fetch('http://localhost:5000/api/nearest-node', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({lat, lng})
+        });
+        
+        if (!response.ok) {
+            throw new Error('No nearby roads found');
+        }
+        
+        const data = await response.json();
+        
+        // Remove temp marker
+        map.removeLayer(tempMarker);
+        
+        // Place marker at actual road location (snapped)
+        startMarker = L.marker([data.lat, data.lng]).addTo(map)
+            .bindPopup('START', {
+                closeButton: false,
+                className: 'start-popup'
+            })
+            .openPopup();
+        
+        // Store the snapped location
+        startLocation = {lat: data.lat, lng: data.lng};
+        
+        // Update UI
+        document.getElementById('start-coords').textContent = 
+            `${data.lat.toFixed(4)}, ${data.lng.toFixed(4)}`;
+        document.getElementById('generate-btn').disabled = false;
+        
+        // Hide previous results
+        document.getElementById('result-info').style.display = 'none';
+        document.getElementById('error-message').style.display = 'none';
+        
+        // Remove previous route
+        if (routeLine) {
+            map.removeLayer(routeLine);
+            routeLine = null;
+        }
+        
+    } catch (error) {
+        map.removeLayer(tempMarker);
+        showError('Please click on a road. The selected location is not accessible.');
     }
 });
 
@@ -154,9 +178,9 @@ window.addEventListener('load', async () => {
         const response = await fetch('http://localhost:5000/api/health');
         if (response.ok) {
             const data = await response.json();
-            console.log('✓ Backend connected:', data);
+            console.log('Backend connected:', data);
         }
     } catch (error) {
-        console.warn('⚠ Backend not running. Start it with: cd backend && python app.py');
+        console.warn('Backend not running. Start it with: cd backend && python app.py');
     }
 });
