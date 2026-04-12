@@ -7,22 +7,30 @@ load_dotenv()
 # Get the backend directory
 BASE_DIR = Path(__file__).resolve().parent
 
-# API Keys
+# API key
 GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '')
 
-# Application settings
+# App settings
 DEBUG = True
 PORT = 5000
 
-# Network data
-NETWORK_FILE = BASE_DIR / 'boston_network.graphml'
+# Toggle between walk vs bike network
+USE_WALK_NETWORK = False
+
+# Get network data
+if USE_WALK_NETWORK:
+    NETWORK_FILE = BASE_DIR / 'boston_walk_network.graphml'
+    NETWORK_TYPE = 'walk'
+else:
+    NETWORK_FILE = BASE_DIR / 'boston_bike_network.graphml'
+    NETWORK_TYPE = 'bike'
+
 CITY = 'Boston, Massachusetts, USA'
-NETWORK_TYPE = 'walk' # maybe change this to bike? - did that but could change back to walk
 
 # Algorithm parameters
-SA_MAX_ITERATIONS = 750
+SA_MAX_ITERATIONS = 300
 SA_INIT_TEMP = 100.0
-SA_DECAY = 0.99
+SA_DECAY = 0.95
 SA_NUM_WAYPOINTS = 5
 
 # Route constraints

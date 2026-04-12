@@ -1,6 +1,8 @@
 import osmnx as ox
 from pathlib import Path
 import backend.config as config
+from shapely.geometry import Point
+import geopandas as gpd
 
 def load_or_download_network():
     """
@@ -50,9 +52,7 @@ def add_elevation_to_network(G, api_key=None):
             # Use Google API
             G = ox.elevation.add_node_elevations_google(G, api_key=api_key)
         else:
-            # Use free raster file (if available)
-            # TODO: Add raster file path
-            print("Warning: No elevation data added (need API key or raster file)")
+            print("No elevation data added")
             return G
         
         # Calculate edge grades
@@ -65,4 +65,40 @@ def add_elevation_to_network(G, api_key=None):
     except Exception as e:
         print(f"Error adding elevation: {e}")
     
+    return G
+
+def load_green_features(city):
+    """Download green spaces from OSM"""
+    tags = {
+        'leisure': ['park', 'nature_reserve', 'garden'],
+        'natural': ['water', 'wood', 'grassland'],
+        'landuse': ['forest', 'grass', 'meadow']
+    }
+    gdf = ox.features_from_place(city, tags=tags)
+    return gdf[gdf.geometry.notna()]
+
+def add_greenery_scores(G, green_features, buffer_m=50):
+    """Add greenery scores to edges based on proximity to parks"""
+    
+    green = green_features.to_crs(epsg=3857)
+    green_union = green.geometry.union_all()
+    
+    rows = []
+    for u, v, k in G.edges(keys=True):
+        mid_lat = (G.nodes[u]['y'] + G.nodes[v]['y']) / 2
+        mid_lng = (G.nodes[u]['x'] + G.nodes[v]['x']) / 2
+        rows.append({'u': u, 'v': v, 'k': k, 'geometry': Point(mid_lng, mid_lat)})
+    
+    edges_gdf = gpd.GeoDataFrame(rows, crs=4326).to_crs(epsg=3857)
+    inside = edges_gdf.geometry.within(green_union)
+    dist = edges_gdf.geometry.distance(green_union)
+    
+    edges_gdf['greenery_score'] = 0.0
+    edges_gdf.loc[inside, 'greenery_score'] = 1.0
+    edges_gdf.loc[~inside, 'greenery_score'] = (1 - (dist[~inside] / buffer_m)).clip(0, 1)
+    
+    for _, row in edges_gdf.iterrows():
+        G[row['u']][row['v']][row['k']]['greenery_score'] = row['greenery_score']
+    
+    print(f"Greenery scores added to {len(edges_gdf)} edges")
     return G

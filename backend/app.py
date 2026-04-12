@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from backend import config
-from backend.services.network_manager import load_or_download_network, add_elevation_to_network
+from backend.services.network_manager import load_or_download_network, add_elevation_to_network, load_green_features, add_greenery_scores
 from backend.services.route_stats import calculate_route_stats, route_nodes_to_coordinates
 from backend.algorithms.simulated_annealing import simulated_annealing
 from backend.algorithms.fitness import build_full_route
@@ -22,6 +22,14 @@ G = load_or_download_network()
 
 # Try to add elevation (will skip if no API key)
 G = add_elevation_to_network(G, config.GOOGLE_MAPS_API_KEY)
+
+try:
+    print("Loading greenery data...")
+    green_features = load_green_features(config.CITY)
+    G = add_greenery_scores(G, green_features)
+except Exception as e:
+    print(f"Warning: Could not load greenery: {e}")
+    print("Routes will work but without greenery optimization")
 
 print(f"API ready! Network has {len(G.nodes())} nodes")
 
@@ -58,6 +66,7 @@ def generate_route():
         start_lng = data['start']['lng']
         target_distance = float(data['distance'])
         elevation_pref = data.get('elevation', 'flat')
+        greenery_pref = data.get('greenery', 'medium')
         
         # Validate distance
         if target_distance < config.MIN_DISTANCE_KM or target_distance > config.MAX_DISTANCE_KM:
@@ -73,6 +82,7 @@ def generate_route():
             start_node, 
             target_distance, 
             elevation_pref,
+            greenery_pref,
             max_iterations=config.SA_MAX_ITERATIONS
         )
         

@@ -18,7 +18,7 @@ Tuning:
 - Adjust elevation weights if preferences not respected
 """
 
-def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='flat'):
+def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='flat', greenery_pref='medium'):
     """
     Calculate fitness score for a route
     Higher score = better route.
@@ -26,14 +26,17 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
     Priorities:
     1. Must match distance
     2. Should match elevation preference
-    3. Penalize busy/unsafe roads
-    3. Penalize backtracking/repeated edges
-    4. Loop quality
+    3. Should match greenery preference
+    4. Penalize busy/unsafe roads
+    5. Penalize backtracking/repeated edges
+    6. Loop quality
 
     """
+
+    print(f"  Calculating fitness for {len(route_waypoints)} waypoints...")
     
-    # build route through waypoints
     full_route = build_full_route(G, route_waypoints)
+    print(f"  Built route with {len(full_route) if full_route else 0} nodes")
     
     # invalid route which is obviously very bad
     if not full_route or len(full_route) < 2:
@@ -85,6 +88,8 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
             else:
                 elevation_score = min(elevation_gain * 0.4, 300)  # cap at 300 points
 
+    greenery_score = calculate_greenery_score(G, full_route, greenery_pref)
+
     backtracking_penalty = calculate_backtracking(full_route)
 
     # weight_by_road_type already handles highways in pathfinding, but this is a small backup penalty
@@ -104,7 +109,7 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
         loop_score = 50
     
     # TOTAL SCORE
-    total_score = distance_score + elevation_score + loop_score - backtracking_penalty - busyness_penalty
+    total_score = distance_score + elevation_score + loop_score + greenery_score - backtracking_penalty - busyness_penalty
     
     return total_score
 
@@ -121,7 +126,8 @@ def build_full_route(G, waypoints):
     for i in range(len(waypoints) - 1):
         try:
             # Find shortest path between consecutive waypoints
-            segment = ox.shortest_path(G, waypoints[i], waypoints[i+1], weight=weight_by_road_type)
+            # segment = ox.shortest_path(G, waypoints[i], waypoints[i+1], weight=weight_by_road_type)
+            segment = ox.shortest_path(G, waypoints[i], waypoints[i+1], weight='length')
             
             if segment is None:
                 return None  # No path exists
@@ -255,3 +261,33 @@ def weight_by_road_type(u, v, d):
         return length * 2      # Moderate traffic
     else:
         return length          # Residential, paths, etc - normal cost
+    
+def calculate_greenery_score(G, full_route, greenery_pref='medium'):
+    """
+    Calculate greenery score based on route's proximity to parks.
+    """
+    scores = []
+    for i in range(len(full_route) - 1):
+        u, v = full_route[i], full_route[i+1]
+        if G.has_edge(u, v):
+            scores.append(G[u][v][0].get('greenery_score', 0))
+    
+    if not scores:
+        return 0
+    
+    avg = sum(scores) / len(scores)
+
+    if greenery_pref == 'low':
+        if avg <= 0.2:
+            return 200  # Reduced from 500
+        else:
+            return -((avg - 0.2) / 0.8) * 100
+    elif greenery_pref == 'medium':
+        return 0  # Neutral
+    elif greenery_pref == 'high':
+        if avg >= 0.6:
+            return 200  # Reduced from 500
+        else:
+            return -((1 - (avg / 0.6)) * 100)
+    
+    return 0

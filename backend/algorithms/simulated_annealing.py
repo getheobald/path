@@ -3,7 +3,7 @@ import math
 import osmnx as ox
 from algorithms.fitness import calculate_fitness
 
-def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat', max_iterations=500):
+def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat', greenery_pref='medium', max_iterations=500):
     """
     Generate a route using simulated annealing.
     
@@ -21,7 +21,7 @@ def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat'
     
     # initialize with random route
     current_route = generate_random_route(G, start_node, num_waypoints=5)
-    current_score = calculate_fitness(G, current_route, target_distance_km, elevation_pref)
+    current_score = calculate_fitness(G, current_route, target_distance_km, elevation_pref, greenery_pref)
     
     best_route = current_route.copy()
     best_score = current_score
