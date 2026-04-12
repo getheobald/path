@@ -93,7 +93,8 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
     backtracking_penalty = calculate_backtracking(full_route)
 
     # weight_by_road_type already handles highways in pathfinding, but this is a small backup penalty
-    busyness_penalty = calculate_road_busyness_penalty(G, full_route)
+    #busyness_penalty = calculate_road_busyness_penalty(G, full_route)
+    busyness_penalty = 0
     
     # LOOP QUALITY
     loop_score = 0
@@ -279,14 +280,14 @@ def calculate_greenery_score(G, full_route, greenery_pref='medium'):
 
     if greenery_pref == 'low':
         if avg <= 0.2:
-            return 200  # Reduced from 500
+            return 200 
         else:
             return -((avg - 0.2) / 0.8) * 100
     elif greenery_pref == 'medium':
-        return 0  # Neutral
+        return 0
     elif greenery_pref == 'high':
         if avg >= 0.6:
-            return 200  # Reduced from 500
+            return 200
         else:
             return -((1 - (avg / 0.6)) * 100)
     

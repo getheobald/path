@@ -44,22 +44,38 @@ def calculate_route_stats(G, route_nodes):
 
 def route_nodes_to_coordinates(G, route_nodes):
     """
-    Convert list of node IDs to lat/lng coordinates.
-    
-    Args:
-        G: OSMnx graph
-        route_nodes: List of node IDs
-        
-    Returns:
-        List of {'lat': float, 'lng': float} dicts
+    Convert route to detailed coordinates including street curvature.
+    Extracts geometry from edges for smooth visualization.
     """
     coordinates = []
     
-    for node_id in route_nodes:
-        node_data = G.nodes[node_id]
-        coordinates.append({
-            'lat': node_data['y'],
-            'lng': node_data['x']
-        })
+    for i in range(len(route_nodes) - 1):
+        u, v = route_nodes[i], route_nodes[i+1]
+        
+        # Add start node
+        if i == 0:
+            coordinates.append({
+                'lat': G.nodes[u]['y'],
+                'lng': G.nodes[u]['x']
+            })
+        
+        # Check if edge has detailed geometry
+        if G.has_edge(u, v):
+            edge_data = G.edges[u, v, 0]
+            
+            if 'geometry' in edge_data:
+                # Edge has curved geometry
+                geom = edge_data['geometry']
+                for coord in geom.coords:
+                    coordinates.append({
+                        'lat': coord[1],  # latitude
+                        'lng': coord[0]   # longitude
+                    })
+            else:
+                # No geometry, just straight line to next node
+                coordinates.append({
+                    'lat': G.nodes[v]['y'],
+                    'lng': G.nodes[v]['x']
+                })
     
     return coordinates
