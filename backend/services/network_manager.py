@@ -84,7 +84,7 @@ def add_greenery_scores(G, green_features, buffer_m=50):
     """Add greenery scores to edges based on proximity to parks"""
     
     green = green_features.to_crs(epsg=3857)
-    green_union = green.geometry.unary_union
+    green_union = green.geometry.union_all()
     
     rows = []
     for u, v, k in G.edges(keys=True):

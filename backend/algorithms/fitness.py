@@ -1,5 +1,8 @@
 import osmnx as ox
 
+_PATH_CACHE = {}
+_PATH_CACHE_MAX = 5000
+
 """
 Fitness Function for Route Optimization
 
@@ -117,21 +120,26 @@ def build_full_route(G, waypoints):
     """
     Build full route through waypoints using shortest paths.
     Uses weight_by_road_type to avoid highways and busy roads.
-    
+
     Returns:
         List of node IDs forming complete route
     """
     full_route = []
-    
+
     for i in range(len(waypoints) - 1):
+        key = (waypoints[i], waypoints[i+1])
         try:
-            # Find shortest path between consecutive waypoints
-            # segment = ox.shortest_path(G, waypoints[i], waypoints[i+1], weight=weight_by_road_type)
-            segment = ox.shortest_path(G, waypoints[i], waypoints[i+1], weight='length')
-            
+            if key not in _PATH_CACHE:
+                segment = ox.shortest_path(G, key[0], key[1], weight='length')
+                if len(_PATH_CACHE) >= _PATH_CACHE_MAX:
+                    _PATH_CACHE.pop(next(iter(_PATH_CACHE)))
+                _PATH_CACHE[key] = segment
+
+            segment = _PATH_CACHE[key]
+
             if segment is None:
                 return None  # No path exists
-            
+
             # Add segment (avoid duplicating nodes at junctions)
             if full_route:
                 full_route.extend(segment[1:])
@@ -140,7 +148,7 @@ def build_full_route(G, waypoints):
         except Exception as e:
             print(f"Error finding path: {e}")
             return None
-    
+
     return full_route
 
 def calculate_elevation_gain(G, route_nodes):

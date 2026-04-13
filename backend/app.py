@@ -16,25 +16,10 @@ from backend.algorithms.fitness import build_full_route
 app = Flask(__name__)
 CORS(app)
 
-# Load network at startup
-print("Initializing PATH API...")
-
-# Cache the place boundary polygon at startup
-print("Loading region boundary...")
-try:
-    _place_gdf = ox.geocode_to_gdf(config.CITY)
-    NETWORK_BOUNDARY_GEOJSON = _place_gdf.geometry.iloc[0].__geo_interface__
-    print("Region boundary loaded.")
-except Exception as e:
-    print(f"Warning: Could not load place boundary, will use graph bounding box: {e}")
-    NETWORK_BOUNDARY_GEOJSON = None
-
-# Try to add elevation (will skip if no API key)
-G = add_elevation_to_network(G, config.GOOGLE_MAPS_API_KEY)
 def build_network(network_type):
     """Load, elevate, and greenify a network. Returns graph."""
     file = config.BASE_DIR / f'boston_{network_type}_network.graphml'
-    
+
     if file.exists():
         print(f"Loading {network_type} network from cache...")
         G = ox.load_graphml(file)
@@ -44,20 +29,42 @@ def build_network(network_type):
         ox.save_graphml(G, file)
 
     G = add_elevation_to_network(G, config.GOOGLE_MAPS_API_KEY)
-    try:
-        green_features = load_green_features(config.CITY)
-        G = add_greenery_scores(G, green_features)
-    except Exception as e:
-        print(f"Warning: greenery unavailable for {network_type}: {e}")
-    
+    if _green_features is not None:
+        try:
+            G = add_greenery_scores(G, _green_features)
+        except Exception as e:
+            print(f"Warning: greenery unavailable for {network_type}: {e}")
+
     print(f"  {network_type}: {len(G.nodes())} nodes, {len(G.edges())} edges")
     return G
 
-networks = {
-    'bike': build_network('bike'),
-    'walk': build_network('walk'),
-}
-print("Both networks ready.")
+# Only load heavy data in the main process, not the reloader watcher process
+import os
+if not config.DEBUG or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    print("Initializing PATH API...")
+
+    print("Loading region boundary...")
+    try:
+        _place_gdf = ox.geocode_to_gdf(config.CITY)
+        NETWORK_BOUNDARY_GEOJSON = _place_gdf.geometry.iloc[0].__geo_interface__
+        print("Region boundary loaded.")
+    except Exception as e:
+        print(f"Warning: Could not load place boundary, will use graph bounding box: {e}")
+        NETWORK_BOUNDARY_GEOJSON = None
+
+    print("Loading greenery data (shared across networks)...")
+    try:
+        _green_features = load_green_features(config.CITY)
+        print("Greenery data loaded.")
+    except Exception as e:
+        print(f"Warning: Could not load greenery: {e}")
+        _green_features = None
+
+    networks = {
+        'bike': build_network('bike'),
+        'walk': build_network('walk'),
+    }
+    print("Both networks ready.")
 
 
 # Shared progress state updated during route generation
@@ -84,6 +91,7 @@ def network_bounds():
         return jsonify({'geojson': NETWORK_BOUNDARY_GEOJSON})
 
     # Fallback: derive a bounding box from the graph nodes
+    G = networks['bike']
     lats = [data['y'] for _, data in G.nodes(data=True)]
     lngs = [data['x'] for _, data in G.nodes(data=True)]
     bbox = [

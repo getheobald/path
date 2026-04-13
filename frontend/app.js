@@ -188,63 +188,33 @@ function selectAddress(result) {
 map.on('click', async function(e) {
     const { lat, lng } = e.latlng;
 
-    // Remove previous marker if exists
-    if (startMarker) {
-        map.removeLayer(startMarker);
-    }
-
-
-    // Reverse geocode the clicked point
+    if (startMarker) map.removeLayer(startMarker);
+    document.getElementById('error-message').style.display = 'none';
     reverseGeocode(lat, lng);
-    const tempMarker = L.marker([lat, lng], {opacity: 0.5}).addTo(map);
 
+    // Try to snap to the nearest road node; fall back to the raw click if it fails
+    let snapLat = lat, snapLng = lng;
     try {
-        // Ask backend to find nearest valid road node
         const response = await fetch('http://localhost:5000/api/nearest-node', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({lat, lng, network: document.getElementById('network').value})
         });
-        
-        if (!response.ok) {
-            throw new Error('No nearby roads found');
+        if (response.ok) {
+            const data = await response.json();
+            snapLat = data.lat;
+            snapLng = data.lng;
         }
-        
-        const data = await response.json();
-        
-        // Remove temp marker
-        map.removeLayer(tempMarker);
-        
-        // Place marker at actual road location (snapped)
-        startMarker = L.marker([data.lat, data.lng]).addTo(map)
-            .bindPopup('START', {
-                closeButton: false,
-                className: 'start-popup'
-            })
-            .openPopup();
-        
-        // Store the snapped location
-        startLocation = {lat: data.lat, lng: data.lng};
-        
-        // Update UI
-        document.getElementById('start-coords').textContent = 
-            `${data.lat.toFixed(4)}, ${data.lng.toFixed(4)}`;
-        document.getElementById('generate-btn').disabled = false;
-        
-        // Hide previous results
-        document.getElementById('result-info').style.display = 'none';
-        document.getElementById('error-message').style.display = 'none';
-        
-        // Remove previous route
-        if (routeLine) {
-            map.removeLayer(routeLine);
-            routeLine = null;
-        }
-        
-    } catch (error) {
-        map.removeLayer(tempMarker);
-        showError('Please click on a road. The selected location is not accessible.');
-    }
+    } catch {}
+
+    startMarker = L.marker([snapLat, snapLng]).addTo(map)
+        .bindPopup('START', { closeButton: false, className: 'start-popup' })
+        .openPopup();
+
+    startLocation = { lat: snapLat, lng: snapLng };
+    document.getElementById('start-coords').textContent =
+        `${snapLat.toFixed(4)}, ${snapLng.toFixed(4)}`;
+    document.getElementById('generate-btn').disabled = false;
 });
 
 async function generateRoute() {
@@ -315,7 +285,7 @@ async function generateRoute() {
                 start: startLocation,
                 distance: distance,
                 elevation: elevation,
-                greenery: document.getElementById('greenery').value,
+                greenery: greenery,
                 network: document.getElementById('network').value,
             })
         });
@@ -416,8 +386,7 @@ function displayRoute(data) {
             popupAnchor: [1, -34]
         }));
         const estMin = Math.round((data.distance / 5) * 60);
-        const elevations = data.route.map(p => p.elevation).filter(e => e != null);
-        const maxElevStr = elevations.length ? `${Math.round(Math.max(...elevations))} m` : 'N/A';
+        const elevClimbedStr = data.elevation_gain != null ? `${Math.round(data.elevation_gain)} m` : 'N/A';
         completedMarker.unbindPopup();
         completedMarker
             .bindPopup(
@@ -425,7 +394,7 @@ function displayRoute(data) {
                     <strong>&#10003; Completed!</strong><br>
                     Est. Time: ${estMin} min<br>
                     Route Distance: ${data.distance.toFixed(2)} km<br>
-                    Max Elevation: ${maxElevStr}
+                    Elevation Climbed: ${elevClimbedStr}
                 </div>`,
                 { closeButton: false, className: 'completed-popup' }
             )
@@ -436,10 +405,8 @@ function displayRoute(data) {
 function showResults(data) {
     document.getElementById('result-distance').textContent = 
         data.distance.toFixed(2);
-    document.getElementById('result-elevation').textContent = 
+    document.getElementById('result-elevation').textContent =
         data.elevation_gain.toFixed(0);
-    document.getElementById('result-elevation-loss').textContent = 
-        data.elevation_loss.toFixed(0);
     document.getElementById('result-info').style.display = 'block';
 }
 

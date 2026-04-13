@@ -20,19 +20,21 @@ def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat'
     print(f"Starting simulated annealing: target={target_distance_km}km, pref={elevation_pref}")
     
     # initialize with random route
-    current_route = generate_random_route(G, start_node, num_waypoints)
+    current_route = generate_random_route(G, start_node, num_waypoints=5)
     current_score = calculate_fitness(G, current_route, target_distance_km, elevation_pref, greenery_pref)
     
     best_route = current_route.copy()
     best_score = current_score
-    
+
     import config
     temp = config.SA_INIT_TEMP
     decay = config.SA_DECAY
-    
+
+    all_nodes = list(G.nodes())
+
     for iteration in range(max_iterations):
         # generate neighbor by mutating current route
-        new_route = mutate_route(G, current_route)
+        new_route = mutate_route(G, current_route, all_nodes)
         new_score = calculate_fitness(G, new_route, target_distance_km, elevation_pref, greenery_pref)
         
         # decide whether to accept
@@ -47,7 +49,7 @@ def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat'
         # cool down
         temp *= decay
 
-        if progress_callback:
+        if progress_callback and iteration % 10 == 0:
             progress_callback(iteration + 1, max_iterations)
 
         # log progress
@@ -92,10 +94,9 @@ def generate_random_route(G, start_node, num_waypoints):
     
     return route
 
-def mutate_route(G, route):
+def mutate_route(G, route, all_nodes):
     """Make a small random change to the route"""
     new_route = route.copy()
-    all_nodes = list(G.nodes())
     
     mutation_type = random.choice(['change_waypoint', 'swap_waypoints', 'move_waypoint'])
     
