@@ -31,7 +31,7 @@ map.on('click', async function(e) {
         const response = await fetch('http://localhost:5000/api/nearest-node', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({lat, lng})
+            body: JSON.stringify({lat, lng, network: document.getElementById('network').value})
         });
         
         if (!response.ok) {
@@ -106,7 +106,9 @@ async function generateRoute() {
             body: JSON.stringify({
                 start: startLocation,
                 distance: distance,
-                elevation: elevation
+                elevation: elevation,
+                greenery: document.getElementById('greenery').value,
+                network: document.getElementById('network').value,
             })
         });
         
