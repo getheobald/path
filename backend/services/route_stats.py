@@ -57,18 +57,25 @@ def route_nodes_to_coordinates(G, route_nodes):
 
         elevation = node_data.get('elevation')
 
-        # Greenery score lives on edges; use the edge leading *into* this node
+        # Both street_name and greenery_score come from the incoming edge
         greenery_score = 0.0
+        street_name = None
         if i > 0:
             prev = route_nodes[i - 1]
             if G.has_edge(prev, node_id):
-                greenery_score = G.edges[prev, node_id, 0].get('greenery_score', 0.0)
+                edge_data = G.edges[prev, node_id, 0]
+                greenery_score = edge_data.get('greenery_score', 0.0)
+                name = edge_data.get('name')
+                if isinstance(name, list):
+                    name = name[0] if name else None
+                street_name = name
 
         coordinates.append({
             'lat': node_data['y'],
             'lng': node_data['x'],
             'elevation': elevation,
-            'greenery_score': greenery_score
+            'greenery_score': greenery_score,
+            'street_name': street_name
         })
 
     return coordinates

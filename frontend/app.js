@@ -245,6 +245,7 @@ async function generateRoute() {
     }
 
     document.getElementById('result-info').style.display = 'none';
+    document.getElementById('directions-info').style.display = 'none';
     const fitRouteBtn = document.getElementById('fit-route-btn');
     if (fitRouteBtn) fitRouteBtn.classList.add('fit-btn-disabled');
 
@@ -295,9 +296,10 @@ async function generateRoute() {
         
         // Display route
         displayRoute(data);
-        
-        // Show results
+
+        // Show results and directions
         showResults(data);
+        showDirections(data.route);
         
         // Hide errors
         document.getElementById('error-message').style.display = 'none';
@@ -381,8 +383,8 @@ function displayRoute(data) {
             popupAnchor: [1, -34]
         }));
         const estMin = Math.round((data.distance / 5) * 60);
-        const netElev = (data.elevation_gain - data.elevation_loss).toFixed(0);
-        const netElevStr = netElev >= 0 ? `+${netElev} m` : `${netElev} m`;
+        const elevations = data.route.map(p => p.elevation).filter(e => e != null);
+        const maxElevStr = elevations.length ? `${Math.round(Math.max(...elevations))} m` : 'N/A';
         completedMarker.unbindPopup();
         completedMarker
             .bindPopup(
@@ -390,7 +392,7 @@ function displayRoute(data) {
                     <strong>&#10003; Completed!</strong><br>
                     Est. Time: ${estMin} min<br>
                     Route Distance: ${data.distance.toFixed(2)} km<br>
-                    Net Elevation: ${netElevStr}
+                    Max Elevation: ${maxElevStr}
                 </div>`,
                 { closeButton: false, className: 'completed-popup' }
             )
@@ -412,6 +414,118 @@ function showError(message) {
     const errorDiv = document.getElementById('error-message');
     errorDiv.textContent = message;
     errorDiv.style.display = 'block';
+}
+
+// --- Street-level turn-by-turn directions ---
+
+function calcBearing(lat1, lng1, lat2, lng2) {
+    const r = Math.PI / 180;
+    const dLng = (lng2 - lng1) * r;
+    const y = Math.sin(dLng) * Math.cos(lat2 * r);
+    const x = Math.cos(lat1 * r) * Math.sin(lat2 * r) -
+              Math.sin(lat1 * r) * Math.cos(lat2 * r) * Math.cos(dLng);
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+function haversineDist(lat1, lng1, lat2, lng2) {
+    const R = 6371000, r = Math.PI / 180;
+    const dLat = (lat2 - lat1) * r, dLng = (lng2 - lng1) * r;
+    const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function bearingToCardinalFull(b) {
+    return ['north','northeast','east','southeast','south','southwest','west','northwest']
+        [Math.round(b / 45) % 8];
+}
+
+function formatDist(m) {
+    return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
+}
+
+function formatStreet(name) {
+    if (!name) return 'unnamed road';
+    return Array.isArray(name) ? name[0] : name;
+}
+
+function turnDetails(angle) {
+    const a = Math.abs(angle);
+    if (a > 135) return { text: 'Make a U-turn',        icon: '↩' };
+    if (angle > 45)  return { text: 'Turn right',           icon: '→' };
+    if (angle > 15)  return { text: 'Turn slight right',    icon: '↗' };
+    if (angle > -15) return { text: 'Continue straight',    icon: '↑' };
+    if (angle > -45) return { text: 'Turn slight left',     icon: '↖' };
+    return              { text: 'Turn left',            icon: '←' };
+}
+
+function generateStreetDirections(route) {
+    if (!route || route.length < 2) return [];
+
+    const steps = [];
+    const initBearing = calcBearing(route[0].lat, route[0].lng, route[1].lat, route[1].lng);
+
+    steps.push({
+        icon: '↑',
+        text: `Head ${bearingToCardinalFull(initBearing)} on ${formatStreet(route[1].street_name)}`,
+        distance: 0
+    });
+
+    let segDist = 0;
+
+    for (let i = 1; i < route.length - 1; i++) {
+        segDist += haversineDist(route[i - 1].lat, route[i - 1].lng, route[i].lat, route[i].lng);
+
+        const curStreet  = route[i].street_name;
+        const nextStreet = route[i + 1].street_name;
+
+        if (curStreet !== nextStreet && (curStreet || nextStreet)) {
+            steps[steps.length - 1].distance = segDist;
+
+            const b1 = calcBearing(route[i - 1].lat, route[i - 1].lng, route[i].lat, route[i].lng);
+            const b2 = calcBearing(route[i].lat, route[i].lng, route[i + 1].lat, route[i + 1].lng);
+            const angle = ((b2 - b1 + 540) % 360) - 180;
+            const td = turnDetails(angle);
+
+            steps.push({
+                icon: td.icon,
+                text: `${td.text} onto ${formatStreet(nextStreet)}`,
+                distance: 0
+            });
+            segDist = 0;
+        }
+    }
+
+    // Distance for the last moving step
+    segDist += haversineDist(
+        route[route.length - 2].lat, route[route.length - 2].lng,
+        route[route.length - 1].lat, route[route.length - 1].lng
+    );
+    steps[steps.length - 1].distance = segDist;
+
+    steps.push({ icon: '🏁', text: 'You have arrived at your destination', distance: null });
+
+    return steps;
+}
+
+function showDirections(route) {
+    const steps = generateStreetDirections(route);
+    const list = document.getElementById('directions-list');
+    list.innerHTML = '';
+
+    steps.forEach(step => {
+        const el = document.createElement('div');
+        el.className = 'direction-step';
+        el.innerHTML = `
+            <div class="direction-icon">${step.icon}</div>
+            <div class="direction-text">
+                ${step.text}
+                ${step.distance != null ? `<div class="direction-distance">${formatDist(step.distance)}</div>` : ''}
+            </div>`;
+        list.appendChild(el);
+    });
+
+    document.getElementById('directions-info').style.display = 'block';
 }
 
 async function loadNetworkBounds() {

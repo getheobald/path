@@ -220,6 +220,58 @@ button:disabled {
     color: #27ae60;
 }
 
+.directions-info {
+    margin-top: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    border: 2px solid #3498db;
+}
+
+.directions-info h3 {
+    color: #3498db;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.directions-list {
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.direction-step {
+    display: flex;
+    align-items: flex-start;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.direction-step:last-child {
+    border-bottom: none;
+}
+
+.direction-icon {
+    width: 26px;
+    flex-shrink: 0;
+    font-size: 15px;
+    text-align: center;
+    margin-right: 8px;
+    padding-top: 1px;
+}
+
+.direction-text {
+    flex: 1;
+    font-size: 13px;
+    color: #2c3e50;
+    line-height: 1.4;
+}
+
+.direction-distance {
+    font-size: 11px;
+    color: #7f8c8d;
+    margin-top: 2px;
+}
+
 .error {
     margin-top: 20px;
     padding: 15px;
