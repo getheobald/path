@@ -18,24 +18,39 @@ CORS(app)
 
 # Load network at startup
 print("Initializing PATH API...")
-G = load_or_download_network()
 
-# Try to add elevation (will skip if no API key)
-G = add_elevation_to_network(G, config.GOOGLE_MAPS_API_KEY)
+def build_network(network_type):
+    """Load, elevate, and greenify a network. Returns graph."""
+    file = config.BASE_DIR / f'boston_{network_type}_network.graphml'
+    
+    if file.exists():
+        print(f"Loading {network_type} network from cache...")
+        G = ox.load_graphml(file)
+    else:
+        print(f"Downloading {network_type} network...")
+        G = ox.graph_from_point(config.CENTER_POINT, dist=config.RADIUS, network_type=network_type)
+        ox.save_graphml(G, file)
 
-try:
-    print("Loading greenery data...")
-    green_features = load_green_features(config.CITY)
-    G = add_greenery_scores(G, green_features)
-except Exception as e:
-    print(f"Warning: Could not load greenery: {e}")
-    print("Routes will work but without greenery optimization")
+    G = add_elevation_to_network(G, config.GOOGLE_MAPS_API_KEY)
+    try:
+        green_features = load_green_features(config.CITY)
+        G = add_greenery_scores(G, green_features)
+    except Exception as e:
+        print(f"Warning: greenery unavailable for {network_type}: {e}")
+    
+    print(f"  {network_type}: {len(G.nodes())} nodes, {len(G.edges())} edges")
+    return G
 
-print(f"API ready! Network has {len(G.nodes())} nodes")
+networks = {
+    'bike': build_network('bike'),
+    'walk': build_network('walk'),
+}
+print("Both networks ready.")
+
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Check if API is running"""
+    G = networks['bike']
     return jsonify({
         'status': 'ok',
         'message': 'PATH API is running',
@@ -45,59 +60,48 @@ def health_check():
 
 @app.route('/api/generate-route', methods=['POST'])
 def generate_route():
-    """
-    Generate a route using simulated annealing.
-    
-    Expected JSON:
-    {
-        "start": {"lat": 42.5015, "lng": -71.2619},
-        "distance": 5.0,
-        "elevation": "flat" | "hilly" | "very-hilly"
-    }
-    """
     try:
         data = request.json
-        
-        # Validate input
+
         if not data or 'start' not in data or 'distance' not in data:
             return jsonify({'error': 'Missing required fields'}), 400
-        
+
         start_lat = data['start']['lat']
         start_lng = data['start']['lng']
         target_distance = float(data['distance'])
         elevation_pref = data.get('elevation', 'flat')
         greenery_pref = data.get('greenery', 'medium')
-        
-        # Validate distance
+        network_type = data.get('network', 'bike')
+
+        if network_type not in networks:
+            return jsonify({'error': 'network must be "walk" or "bike"'}), 400
+
+        G = networks[network_type]
+
         if target_distance < config.MIN_DISTANCE_KM or target_distance > config.MAX_DISTANCE_KM:
             return jsonify({'error': f'Distance must be between {config.MIN_DISTANCE_KM} and {config.MAX_DISTANCE_KM} km'}), 400
-        
-        # Find nearest node to start point
+
         start_node = ox.nearest_nodes(G, start_lng, start_lat)
         print(f"Start node: {start_node}")
-        
-        # Run simulated annealing
+
         waypoints = simulated_annealing(
-            G, 
-            start_node, 
-            target_distance, 
+            G,
+            start_node,
+            target_distance,
+            config.SA_NUM_WAYPOINTS,
             elevation_pref,
             greenery_pref,
             max_iterations=config.SA_MAX_ITERATIONS
         )
-        
-        # Build full route
+
         full_route = build_full_route(G, waypoints)
-        
+
         if not full_route:
             return jsonify({'error': 'Could not generate valid route'}), 500
-        
-        # Convert to coordinates
+
         route_coords = route_nodes_to_coordinates(G, full_route)
-        
-        # Calculate stats
         stats = calculate_route_stats(G, full_route)
-        
+
         return jsonify({
             'route': route_coords,
             'distance': stats['distance_km'],
@@ -105,7 +109,7 @@ def generate_route():
             'elevation_loss': stats['elevation_loss_m'],
             'num_waypoints': len(waypoints)
         })
-        
+
     except Exception as e:
         print(f"Error: {e}")
         import traceback
@@ -114,28 +118,24 @@ def generate_route():
 
 @app.route('/api/nearest-node', methods=['POST'])
 def nearest_node():
-    """
-    Find nearest valid road node to a clicked point.
-    Returns the actual lat/lng of the nearest road.
-    """
     try:
         data = request.json
         lat = data['lat']
         lng = data['lng']
-        
-        # Find nearest node in the network
+        network_type = data.get('network', 'bike')
+
+        if network_type not in networks:
+            return jsonify({'error': 'network must be "walk" or "bike"'}), 400
+
+        G = networks[network_type]
         nearest = ox.nearest_nodes(G, lng, lat)
-        
-        # Get that node's actual coordinates
-        node_lat = G.nodes[nearest]['y']
-        node_lng = G.nodes[nearest]['x']
-        
+
         return jsonify({
-            'lat': node_lat,
-            'lng': node_lng,
+            'lat': G.nodes[nearest]['y'],
+            'lng': G.nodes[nearest]['x'],
             'node_id': int(nearest)
         })
-        
+
     except Exception as e:
         return jsonify({'error': 'No nearby roads found'}), 404
 
