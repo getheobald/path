@@ -33,10 +33,7 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
 
     """
 
-    print(f"  Calculating fitness for {len(route_waypoints)} waypoints...")
-    
     full_route = build_full_route(G, route_waypoints)
-    print(f"  Built route with {len(full_route) if full_route else 0} nodes")
     
     # invalid route which is obviously very bad
     if not full_route or len(full_route) < 2:
@@ -107,10 +104,9 @@ def calculate_fitness(G, route_waypoints, target_distance_km, elevation_pref='fl
     elif G.has_edge(end_node, start_node):
         # ends one edge away from start
         loop_score = 50
-    
     # TOTAL SCORE
     total_score = distance_score + elevation_score + loop_score + greenery_score - backtracking_penalty - busyness_penalty
-    
+    print(f"Total score: {total_score}\n")
     return total_score
 
 def build_full_route(G, waypoints):
@@ -273,7 +269,7 @@ def calculate_greenery_score(G, full_route, greenery_pref='medium'):
             scores.append(G[u][v][0].get('greenery_score', 0))
     
     if not scores:
-        return 0
+        return 5
     
     avg = sum(scores) / len(scores)
 

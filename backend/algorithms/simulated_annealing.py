@@ -3,7 +3,7 @@ import math
 import osmnx as ox
 from algorithms.fitness import calculate_fitness
 
-def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat', greenery_pref='medium', max_iterations=500):
+def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat', greenery_pref='medium', max_iterations=500, progress_callback=None):
     """
     Generate a route using simulated annealing.
     
@@ -33,7 +33,7 @@ def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat'
     for iteration in range(max_iterations):
         # generate neighbor by mutating current route
         new_route = mutate_route(G, current_route)
-        new_score = calculate_fitness(G, new_route, target_distance_km, elevation_pref)
+        new_score = calculate_fitness(G, new_route, target_distance_km, elevation_pref, greenery_pref)
         
         # decide whether to accept
         if accept_move(current_score, new_score, temp):
@@ -46,7 +46,10 @@ def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat'
         
         # cool down
         temp *= decay
-        
+
+        if progress_callback:
+            progress_callback(iteration + 1, max_iterations)
+
         # log progress
         if iteration % 100 == 0:
             print(f"Iteration {iteration}: Best score = {best_score:.2f}, Temp = {temp:.2f}")
