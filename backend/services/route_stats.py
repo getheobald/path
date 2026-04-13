@@ -44,22 +44,38 @@ def calculate_route_stats(G, route_nodes):
 
 def route_nodes_to_coordinates(G, route_nodes):
     """
-    Convert list of node IDs to lat/lng coordinates.
-    
-    Args:
-        G: OSMnx graph
-        route_nodes: List of node IDs
-        
+    Convert list of node IDs to lat/lng coordinates, including elevation
+    and the greenery_score of the outgoing edge for each node.
+
     Returns:
-        List of {'lat': float, 'lng': float} dicts
+        List of {'lat', 'lng', 'elevation', 'greenery_score'} dicts
     """
     coordinates = []
-    
-    for node_id in route_nodes:
+
+    for i, node_id in enumerate(route_nodes):
         node_data = G.nodes[node_id]
+
+        elevation = node_data.get('elevation')
+
+        # Both street_name and greenery_score come from the incoming edge
+        greenery_score = 0.0
+        street_name = None
+        if i > 0:
+            prev = route_nodes[i - 1]
+            if G.has_edge(prev, node_id):
+                edge_data = G.edges[prev, node_id, 0]
+                greenery_score = edge_data.get('greenery_score', 0.0)
+                name = edge_data.get('name')
+                if isinstance(name, list):
+                    name = name[0] if name else None
+                street_name = name
+
         coordinates.append({
             'lat': node_data['y'],
-            'lng': node_data['x']
+            'lng': node_data['x'],
+            'elevation': elevation,
+            'greenery_score': greenery_score,
+            'street_name': street_name
         })
-    
+
     return coordinates

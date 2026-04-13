@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PATH - AI Route Generator</title>
+    <title>Path</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
 </head>
@@ -11,37 +11,73 @@
     <div class="container">
         <div class="sidebar">
             <h1>🏃 PATH</h1>
-            <p class="subtitle">AI-powered running & cycling routes</p>
+            <p class="subtitle">Generate running & cycling routes!</p>
             
             <div class="input-group">
                 <label for="distance">Distance (km)</label>
                 <input type="number" id="distance" placeholder="e.g., 5" min="1" max="50" value="5" step="0.5">
+                <div class="slider-row" style="margin-top: 8px;">
+                    <span class="slider-emoji">🐢</span>
+                    <input type="range" id="distance-slider" min="0" max="25" value="5" step="0.5">
+                    <span class="slider-emoji">🐇</span>
+                </div>
             </div>
             
             <div class="input-group">
                 <label for="elevation">Elevation Preference</label>
-                <select id="elevation">
-                    <option value="flat">Flat</option>
-                    <option value="hilly">Hilly</option>
-                    <option value="very-hilly">Very Hilly</option>
+                <div class="slider-row">
+                    <span class="slider-emoji">🛣️</span>
+                    <input type="range" id="elevation" min="1" max="3" value="1" step="1">
+                    <span class="slider-emoji">⛰️</span>
+                </div>
+                <div id="elevation-label" class="slider-label">Flat</div>
+            </div>
+
+            <div class="input-group">
+                <label for="greenery">Nature Preference</label>
+                <div class="slider-row">
+                    <span class="slider-emoji">🏢</span>
+                    <input type="range" id="greenery" min="1" max="3" value="2" step="1">
+                    <span class="slider-emoji">🌳</span>
+                </div>
+                <div id="greenery-label" class="slider-label">Medium</div>
+            </div>
+            
+
+            <div class="input-group">
+                <label for="network">Route Type</label>
+                <select id="network">
+                    <option value="bike">🚴 Bike</option>
+                    <option value="walk">🚶 Run</option>
                 </select>
             </div>
             
             <div class="input-group">
                 <label>Starting Point</label>
-                <p class="help-text">Click on the map to set your starting location</p>
+                <p class="help-text">Click the map or search an address below</p>
                 <div id="start-coords">Not set</div>
+                <div class="address-search-container">
+                    <input type="text" id="address-input" placeholder="Search address…" autocomplete="off">
+                    <div id="address-suggestions" class="address-suggestions"></div>
+                </div>
             </div>
             
             <button id="generate-btn" onclick="generateRoute()" disabled>
                 Generate Route
             </button>
+            <div id="progress-container" class="progress-container" style="display:none;">
+                <div id="progress-bar" class="progress-bar"></div>
+            </div>
             
             <div id="result-info" class="result-info" style="display: none;">
                 <h3>Route Details</h3>
                 <p>Distance: <span id="result-distance">-</span> km</p>
-                <p>Elevation Gain: <span id="result-elevation">-</span> m</p>
-                <p>Elevation Loss: <span id="result-elevation-loss">-</span> m</p>
+                <p>Elevation Climbed: <span id="result-elevation">-</span> m</p>
+            </div>
+
+            <div id="directions-info" class="directions-info" style="display: none;">
+                <h3>Directions</h3>
+                <div id="directions-list" class="directions-list"></div>
             </div>
             
             <div id="error-message" class="error" style="display: none;"></div>

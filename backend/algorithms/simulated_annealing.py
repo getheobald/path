@@ -3,7 +3,7 @@ import math
 import osmnx as ox
 from algorithms.fitness import calculate_fitness
 
-def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat', max_iterations=500):
+def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat', greenery_pref='medium', max_iterations=500, progress_callback=None):
     """
     Generate a route using simulated annealing.
     
@@ -21,18 +21,21 @@ def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat'
     
     # initialize with random route
     current_route = generate_random_route(G, start_node, num_waypoints=5)
-    current_score = calculate_fitness(G, current_route, target_distance_km, elevation_pref)
+    current_score = calculate_fitness(G, current_route, target_distance_km, elevation_pref, greenery_pref)
     
     best_route = current_route.copy()
     best_score = current_score
-    
-    temp = 100.0
-    decay = 0.95
-    
+
+    import config
+    temp = config.SA_INIT_TEMP
+    decay = config.SA_DECAY
+
+    all_nodes = list(G.nodes())
+
     for iteration in range(max_iterations):
         # generate neighbor by mutating current route
-        new_route = mutate_route(G, current_route)
-        new_score = calculate_fitness(G, new_route, target_distance_km, elevation_pref)
+        new_route = mutate_route(G, current_route, all_nodes)
+        new_score = calculate_fitness(G, new_route, target_distance_km, elevation_pref, greenery_pref)
         
         # decide whether to accept
         if accept_move(current_score, new_score, temp):
@@ -45,7 +48,10 @@ def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat'
         
         # cool down
         temp *= decay
-        
+
+        if progress_callback and iteration % 10 == 0:
+            progress_callback(iteration + 1, max_iterations)
+
         # log progress
         if iteration % 100 == 0:
             print(f"Iteration {iteration}: Best score = {best_score:.2f}, Temp = {temp:.2f}")
@@ -58,7 +64,6 @@ def generate_random_route(G, start_node, num_waypoints):
     Generate initial random route with waypoints near start
     Better initial guess causes faster convergence
     """
-    import osmnx as ox
     
     # pick waypoints in expanding circles around start
     start_point = (G.nodes[start_node]['y'], G.nodes[start_node]['x'])
@@ -89,10 +94,9 @@ def generate_random_route(G, start_node, num_waypoints):
     
     return route
 
-def mutate_route(G, route):
+def mutate_route(G, route, all_nodes):
     """Make a small random change to the route"""
     new_route = route.copy()
-    all_nodes = list(G.nodes())
     
     mutation_type = random.choice(['change_waypoint', 'swap_waypoints', 'move_waypoint'])
     
