@@ -19,7 +19,10 @@ def load_or_download_network():
         print(f"Loaded {len(G.nodes())} nodes, {len(G.edges())} edges")
     else:
         print(f"Downloading network for {config.CITY}...")
-        G = ox.graph_from_place(config.CITY, network_type=config.NETWORK_TYPE)
+        # G = ox.graph_from_place(config.CITY, network_type=config.NETWORK_TYPE)
+
+        G = ox.graph_from_point(config.CENTER_POINT, dist=config.RADIUS, network_type=config.NETWORK_TYPE)
+
         print(f"Downloaded {len(G.nodes())} nodes, {len(G.edges())} edges")
         
         # Save for next time

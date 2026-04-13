@@ -20,7 +20,7 @@ def simulated_annealing(G, start_node, target_distance_km, elevation_pref='flat'
     print(f"Starting simulated annealing: target={target_distance_km}km, pref={elevation_pref}")
     
     # initialize with random route
-    current_route = generate_random_route(G, start_node, num_waypoints=5)
+    current_route = generate_random_route(G, start_node, num_waypoints)
     current_score = calculate_fitness(G, current_route, target_distance_km, elevation_pref, greenery_pref)
     
     best_route = current_route.copy()
@@ -62,7 +62,6 @@ def generate_random_route(G, start_node, num_waypoints):
     Generate initial random route with waypoints near start
     Better initial guess causes faster convergence
     """
-    import osmnx as ox
     
     # pick waypoints in expanding circles around start
     start_point = (G.nodes[start_node]['y'], G.nodes[start_node]['x'])

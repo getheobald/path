@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PATH - AI Route Generator</title>
+    <title>Path</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
 </head>
@@ -11,7 +11,7 @@
     <div class="container">
         <div class="sidebar">
             <h1>🏃 PATH</h1>
-            <p class="subtitle">AI-powered running & cycling routes</p>
+            <p class="subtitle">Generate running & cycling routes!</p>
             
             <div class="input-group">
                 <label for="distance">Distance (km)</label>
@@ -41,6 +41,23 @@
                     <span class="slider-emoji">🌳</span>
                 </div>
                 <div id="greenery-label" class="slider-label">Medium</div>
+            </div>
+            
+            <div class="input-group">
+                <label for="greenery">Greenery Preference</label>
+                <select id="greenery">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="network">Route Type</label>
+                <select id="network">
+                    <option value="bike">🚴 Bike</option>
+                    <option value="walk">🚶 Run</option>
+                </select>
             </div>
             
             <div class="input-group">
